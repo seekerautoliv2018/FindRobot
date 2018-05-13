@@ -1,3 +1,4 @@
+
 #include <MovingAverageFilter.h>
 
 #include <boarddefs.h>
@@ -166,7 +167,7 @@ speed_val_right = 150 + K * (DIST_WALL - right);
 speed_val_left = 150 + K * (DIST_WALL - left);
 
 
-
+//deplasare
 if(find_robot==0){
   switch(state){
    
