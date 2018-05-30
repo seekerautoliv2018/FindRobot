@@ -14,27 +14,22 @@
 #define GREEN 39 
 #define BLUE 43
 #define K 10
-#define DIST_WALL 8.0
-#define COFF 0.5
+#define DIST_WALL 8
 
 MovingAverageFilter Fwd(100);
 MovingAverageFilter L(100);
 MovingAverageFilter R(100);
 
-//we made this from uint32 in double for accuracy
-double forward = 20, left= 7, right= 7;
-double rightCOR = 0, leftCOR = 0;//COR -> CORECTION
+uint32 forward, left, right;
 
 uint8 right_dist,left_dist,front_dist;
 
-uint8 state = 0;//0->wait 5 seconds; 1->forward; 2->right; 3->left
+uint8 state = 0;
 uint8 find_robot=0;
 uint8 alg_used=0;//0 0->right, 1->left
 uint32 timer=millis();
-uint32 prevTime = 0;
 uint32 speed_val_right;
 uint32 speed_val_left;
-uint8 danceState = 1; //used for dancing
 
 int counter = 0, previousState = 0;
 
@@ -73,63 +68,6 @@ uint8 filter(NewPing sonar, uint8 samples)
 }
 
 */
-
-
-
-//dancing function
-void dance()//dancing: left wheel goes forward for 1 second, then right wheel goes backwards for 1 second
-{
-  uint32 currTime = millis();
-  
-  while((millis() - currTime < 1000) && (danceState == 1))
-  {
-    go(150, 0, 1);
-  }
-  
-  currTime = millis();
- 
-  while((millis() - currTime < 1000) && (danceState == (-1)))
-  {
-    go(0, 150, 0);
-  }
-
-  danceState = danceState * (-1);//we now use the other wheel to move
-}
-
-//adjust->returns the error between the distance we want the robot to be from the right wall
-double adjust()
-{
-  double rez = 0;
-  double err = DIST_WALL - right;
-  
-  rez = COFF * err;
-  
-  return rez;
-}
-
-
-//go back and rotate function
-void back()
-{
-  uint32 currTime = millis();
-
-  while(millis() - currTime < 1000)//we go back
-  {
-    go(MAX_SPEED - leftCOR*100, MAX_SPEED - rightCOR*100, 0);//NOTICE THE THIRD ARGUMENT IS 0!! SO WE GO BACKWARDS NOW!
-  }
-
-  currTime = millis();
-
-  while(millis() - currTime < 700)//we rotate now
-  {
-     go(0 , MAX_SPEED - 100, 1); 
-  }
-
-  state = 1;//we go forward again
-  
-}
-
-//opreste -> returns 1 if we are in a hiding spot or return 0 if we can advance
 sint8 opreste()
 {
   sint8 res;
@@ -152,7 +90,6 @@ sint8 opreste()
     return res;
 }
 
-//go function that sets the tensions to the pin of the motors of the wheels
 void go(uint8 volt1, uint8 volt2, sint8 directie)
 {
   if(directie == 1)
@@ -173,20 +110,18 @@ void go(uint8 volt1, uint8 volt2, sint8 directie)
   } 
 }
 
-//in this function we go forward
 void seek()
 {
+  
+  
   if(opreste()) //here we will have the 'go in reverse' code
-    {
-      go(0, 0, 1);
-      state = 4; //'go backwards' state
-      //place code to rotate or go back
-    }
+  //if(forward-old_forward>100)
+    go(0, 0, 1);
   else
-    //if(left < 20 && right < 20)
-      go((uint8)(MAX_SPEED - leftCOR*100),(uint8)( MAX_SPEED - rightCOR*100), 1); // we guide ourselves only using the right wall
-    //else
-     // go(100, 100, 1);
+    if(left < 20 && right < 20)
+      go(speed_val_left, speed_val_right, 1);
+    else
+      go(100, 100, 1);
          
 }
 
@@ -227,31 +162,11 @@ void rotate_left()
     else state = 1; //go forward again
 }
 
-//function that decides which way to go
 void robot_move()
 {
    
   if(results.value == 4294967295 )
     find_robot = 1;
-
-  if(right < 14 && state == 1)//we guide the robot ONLY when we GO FORWARD! And using right wall 
-  {
-    if (adjust() > 0)// if positive then we are to close to the right wall and we need to correct by going to the left
-    {
-      leftCOR = adjust();
-      rightCOR = 0;
-    }
-    else  // if negative then we are to close to the left wall and we need to correct by going to the right
-    {
-      rightCOR = -adjust();
-      leftCOR = 0;
-    }
-  }
-  else// if we are not in the 'go forward' state, then we do NOT adjust and we keep the same speed
-  {
-    leftCOR = rightCOR = 0;
-  }
-  
     
   if(find_robot==0)
   {
@@ -268,8 +183,9 @@ void robot_move()
         previousState = 0;
       }
       counter = 0;
-      }
-      counter++;
+     }
+    
+    counter++;
       switch(state)
       {
         case 0: //before start, wait 5 seconds
@@ -313,20 +229,13 @@ void robot_move()
           rotate_left();// go left
           break;
         }
-
-        case 4:
-        {
-          back();// go back
-          break;
-        }
     
       }
-    }
+   }
    else //place the code for when robot is found
    {
-     //go(0, 0, 1);
+     go(0, 0, 1);
      digitalWrite(BLUE, 40);
-     dance();
    }
   
 }
@@ -344,10 +253,9 @@ void loop()
   left=L.process(sonar1.ping_cm());
   right=R.process(sonar2.ping_cm());
 
-  /*
   speed_val_right = 100 + K * (DIST_WALL - right);  
   speed_val_left = 100 + K * (DIST_WALL - left);
-  */
+
 
   robot_move();
   
