@@ -22,7 +22,7 @@ MovingAverageFilter L(100);
 MovingAverageFilter R(100);
 
 //we made this from uint32 in double for accuracy
-double forward = 20, left= 7, right= 7;
+double forward = 15, left= 6, right= 6;
 double rightCOR = 0, leftCOR = 0;//COR -> CORECTION
 
 uint8 right_dist,left_dist,front_dist;
@@ -82,7 +82,7 @@ void STOP()
 
 
 //dancing function
-void dance()//dancing: right wheel goes forward for 1/2 seconds, then left wheel goes backwards for 1/2 seconds
+void dance()//dancing: left wheel goes forward for 1 second, then right wheel goes backwards for 1 second
 {
   uint32 currTime = millis();
 
