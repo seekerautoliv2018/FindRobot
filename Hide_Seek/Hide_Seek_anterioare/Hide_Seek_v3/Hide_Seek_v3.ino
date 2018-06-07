@@ -9,7 +9,7 @@
 #include "Motors.h"
 #include "Ultrasonic.h"
 
-#define MAX_SPEED 200
+#define MAX_SPEED 150
 #define RED 41
 #define GREEN 39 
 #define BLUE 43
@@ -78,7 +78,7 @@ sint8 opreste()
   Serial.print("stanga: ");
   Serial.println(left);
 
-  if(((forward >4) && (forward <11))  && left < 10 && right < 10)
+  if(forward <20  && left < 10 && right < 10)
     {
       res = 1;
     }
@@ -144,7 +144,7 @@ bool cond_left()
 
 void rotate_right() //state = 2 -> for turning right
 {
-  go(MAX_SPEED, MAX_SPEED/4 , 1);
+  go(100, 40 , 1);
 
   if(right < 10)
     {
@@ -155,7 +155,7 @@ void rotate_right() //state = 2 -> for turning right
 }
 void rotate_left()
 {
-  if(millis()- timer < 650)
+  if(millis()- timer < 700)
     {
       go(0 , MAX_SPEED, 1);
     }

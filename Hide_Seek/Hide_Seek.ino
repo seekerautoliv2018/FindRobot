@@ -9,7 +9,7 @@
 #include "Motors.h"
 #include "Ultrasonic.h"
 
-#define MAX_SPEED 115
+#define MAX_SPEED 150
 #define RED 41
 #define GREEN 39 
 #define BLUE 43
@@ -23,6 +23,7 @@ MovingAverageFilter R(100);
 
 //we made this from uint32 in double for accuracy
 double forward = 20, left= 7, right= 7;
+double forwardPrev = 20, leftPrev = 7, rightPrev = 7;
 double rightCOR = 0, leftCOR = 0;//COR -> CORECTION
 
 uint8 right_dist,left_dist,front_dist;
@@ -57,7 +58,6 @@ void setup() {
     pingTimer1 = millis() + pingSpeed; // Sensor 1 fires after 1 second (pingSpeed)
     pingTimer2 = pingTimer1 + delay_ping; // Sensor 2 fires 35ms later
     pingTimer3 = pingTimer2 + delay_ping;
-    
     Serial.begin(9600);
 }
 
@@ -133,7 +133,12 @@ void back()
 
   while(millis() - currTime < 700)//we rotate now
   {
-     go(0 , MAX_SPEED - 100, 1); 
+     //go(0 , MAX_SPEED - 100, 1); 
+    analogWrite(MOTOR_Left_1, 0);
+    analogWrite(MOTOR_Right_1, 150);
+
+    analogWrite(MOTOR_Left_2, 150);
+    analogWrite(MOTOR_Right_2, 0);
   }
 
   state = 1;//we go forward again
@@ -145,8 +150,9 @@ sint8 opreste()
 {
   sint8 res = 0;
   
-  if(((uint8)forward <15)  && ((uint8)left < 12) && ((uint8)right < 12))
+  if(((uint8)forward <15)  && ((uint8)left < 18) && ((uint8)right < 18))
     {
+      state = 4; //-> rotate
       res = 1;
     }
   
@@ -158,11 +164,23 @@ void go(uint8 volt1, uint8 volt2, sint8 directie)
 {
   if(directie == 1)
   {
+    
     analogWrite(MOTOR_Left_1, volt1);
     analogWrite(MOTOR_Right_1, 0);
 
     analogWrite(MOTOR_Left_2, volt2);
     analogWrite(MOTOR_Right_2, 0);
+
+    /*
+    analogWrite(MOTOR_Right_1, volt2);
+    
+    analogWrite(MOTOR_Right_2, 0);
+
+    
+    analogWrite(MOTOR_Left_1, volt1);
+    
+    analogWrite(MOTOR_Left_2, 0);
+    */
   }
   else
   {
@@ -201,7 +219,7 @@ bool cond_left()
 
 void rotate_right() //state = 2 -> for turning right
 {
-  go(MAX_SPEED, MAX_SPEED/4 + 25, 1);
+  go(MAX_SPEED - 25, 0, 1);
 
   if(right < 10)
     {
@@ -222,10 +240,6 @@ void rotate_left()
 //function that decides which way to go
 void robot_move()
 {
-   
-  if(results.value == 4294967295 )
-    find_robot = 1;
-  
   if(right < 15 && state == 1)//we guide the robot ONLY when we GO FORWARD! And using right wall 
   {
     if (adjust() > 0)// if positive then we are to close to the right wall and we need to correct by going to the left
@@ -244,57 +258,41 @@ void robot_move()
     leftCOR = rightCOR = 0;
   }
   
-    
-  if(find_robot==0)
+ 
+  switch(state)
   {
-    if(counter == 25)
-    {
-      if(previousState == 0)
-      {
-        digitalWrite(BLUE, 30);
-        previousState = 1;
-      }
-      else
-      {
-        digitalWrite(BLUE,LOW);
-        previousState = 0;
-      }
-      counter = 0;
-      }
-      counter++;
-      switch(state)
-      {
-        case 0: //before start, wait 5 seconds
-        { 
-        //if(millis()-timer>5000) //wait 5 seconds
-          state=1;
+     case 0: //before start, wait 5 seconds
+     { 
+      //if(millis()-timer>5000) //wait 5 seconds
+      state=1;
 
-          break;
-        }
+       break;
+      }
     
-        case 1: // go forward
-        {  
-          if(right>18) 
+      case 1: // go forward
+      {  
+        if(right>18) 
+        {
+          timer = millis();
+          state = 2; //turn right
+        }
+        else
+          if(forward > 18)
           {
-            timer = millis();
-            state = 2; //turn right
+            seek();
           }
-          else
-            if(forward > 18)
-            {
-              seek();
-            }
-            else
-              if(left > 18)
-              {
-                timer=millis();
-                state=3; //turn left
-              }
-             /* else
+           else
+             if(left > 18)
+             {
+               timer=millis();
+               state=3; //turn left
+             }
+             /*
+             else
               {
                 go(0,0,1);
               }
-*/
+             */
           break;
         }
     
@@ -317,13 +315,8 @@ void robot_move()
         }
     
       }
-    }
-   else //place the code for when robot is found
-   {
-     //go(0, 0, 1);
-     digitalWrite(BLUE, 40);
-     dance();
-   }
+    
+  
   
 }
 
@@ -336,8 +329,27 @@ void loop()
   left_dist = sonar1.ping_cm();
   front_dist = sonar3.ping_cm();
 
-  forward = Fwd.process(sonar3.ping_cm());
-  left=L.process(sonar1.ping_cm());
+/*
+  if(forwardPrev != 0) 
+  {
+    forward = forwardPrev;
+  }
+  if(leftPrev != 0) {
+    left = leftPrev;
+  }
+  
+  if(rightPrev != 0) 
+  {
+    right = rightPrev;
+  }
+
+  
+  forwardPrev = Fwd.process(sonar3.ping_cm());
+  leftPrev =L.process(sonar1.ping_cm());
+  rightPrev =R.process(sonar2.ping_cm());
+  */
+ forward = Fwd.process(sonar3.ping_cm());
+  left =L.process(sonar1.ping_cm());
   right=R.process(sonar2.ping_cm());
 
   
@@ -347,7 +359,8 @@ void loop()
   Serial.println(right);
   Serial.print("stanga: ");
   Serial.println(left);
-   
+  Serial.print("state = ");
+  Serial.println(state);
   /*
   Serial.print("Diferenta: ");
   Serial.println(DIST_WALL - right);
@@ -360,15 +373,44 @@ void loop()
   speed_val_left = 100 + K * (DIST_WALL - left);
   */
 
+  
+  
+  if(results.value == 4294967295 )
+    find_robot = 1;
 
-  if(opreste())
+  if(find_robot == 0)
   {
-    STOP();//we call go(0,0,1) here -> we will implement the rotation function here!!!
+    if(counter == 25)
+    {
+      if(previousState == 0)
+      {
+        digitalWrite(BLUE, 30);
+        previousState = 1;
+      }
+      else
+      {
+        digitalWrite(BLUE,LOW);
+        previousState = 0;
+      }
+      counter = 0;
+     }
+      counter++;
+    if(opreste())
+    {
+      STOP();//we call go(0,0,1) here -> we will implement the rotation function here!!!
+    }
+    else
+    {
+      robot_move();
+    }
   }
-  else
+  else //place the code for when robot is found
   {
-    robot_move();
+    //go(0, 0, 1);
+    digitalWrite(BLUE, 40);
+    dance();
   }
+   
  
  //dance();
   if ((irrecv.decode(&results)))
@@ -379,7 +421,12 @@ void loop()
    }
 
   //irsend.sendSony(0x76656f6e656572, 12); //send 0xa90 on infrared
+
+
+//go(0 , 200, 1);
 }
+
+
 
 /*
    digitalWrite(43, HIGH);
